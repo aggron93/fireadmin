@@ -122,16 +122,23 @@ module.exports = function(grunt) {
               language_in: 'ECMASCRIPT5_STRICT'
             }
           }
+        },
+        closureDepsWriter: {
+          options: {
+            // [REQUIRED] To find the depswriter executable we need either the path to
+            //    closure library or the depswriter executable full path:
+            closureLibraryPath: '../closure-library',
+
+            // [OPTIONAL] Root directory to scan. Can be string or array
+            root: ['<%= config.devFolder %>'],
+          },
+          targetName: {
+            src:'deps.js',
+            dest:'dev/fa-deps.js'
+          }
         }
 
     });
-    // function getClosurePath(){
-    //   if(process.env && process.env.hasOwnProperty('CLOSURE_PATH')){
-    //     return '<%= process.env.CLOSURE_PATH %>';
-    //   } else {
-    //     return 'node_modules/closure/closure.js';
-    //   }
-    // }
     // Default task(s).
     grunt.registerTask('default', [ 'connect:dev', 'watch']);
     //Documentation, minify js, minify html
