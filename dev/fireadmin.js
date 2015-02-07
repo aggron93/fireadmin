@@ -1,23 +1,26 @@
 
-(function(window, document){
+
+
+  goog.require("fa.init");
+  goog.require("fa.utils");
   //Initialize Library
-  init();
+  fa.init();
   /**
    * Creates a Fireadmin object
-   * @constructor Fireadmin
+   * @namespace Fireadmin
    * @param {String} url Url of Firebase to use with Fireadmin
    * @example
    * //Create new Fireadmin Object
    * var fa = new Fireadmin("https://<your-app>.firebaseio.com");
    */
-  function Fireadmin(url, optionsObj) {
+  function Fireadmin (url, optionsObj) {
     if(typeof url == "undefined" || typeof url != "string"){
       throw new Error('Url is required to use FireAdmin');
     }
-    this = new Firebase(url);
-    this.fbUrl = url;
-    return this
-  }
+    var self = new Firebase(url);
+    self.fbUrl = url;
+    return self;
+  };
   /**
   * This callback is displayed as part of the Requester class.
   * @callback Fireadmin~errorCb
@@ -29,10 +32,10 @@
    * The object is created with a createdAt parameter that is a server timestamp from Firebase.
    * If a user is currently signed in, the object will contain the author's `$uid` under the author parameter.
    * @memberOf Fireadmin#
-   * @param {String} listName - The name of the list the object will be put into.
-   * @param {Object} objectData - Data you wish to be contained within new object
-   * @param {Function} onSuccess - Function that runs when your object has been created successfully and returns newly created object.
-   * @param {Function} onError - Function that runs if there is an error creating the object.
+   * @param {String} listName - `Required` The name of the list the object will be put into.
+   * @param {Object} objectData - `Required` Data you wish to be contained within new object
+   * @param {Function} onSuccess - `Not Required` Function that runs when your object has been created successfully and returns newly created object.
+   * @param {Function} onError - `Not Required` Function that runs if there is an error creating the object.
    * @example
    * //creates new message object in message list
    * fa.createObject('messages', {title:Example, content:"Cool Message"}, function(newMsg){
@@ -43,16 +46,55 @@
    */
   Fireadmin.prototype.createObject = function(listName, obj, successCb, errorCb){
     var auth = this.getAuth();
+    // If user is logged in they are added as the author
     if(auth) {
       obj.author = auth.uid;
     }
-    obj.createdAt = Date.now();
-    var newObjRef = this.child(listName).push(obj, function(err){
-      if(!err){
-        handleCb(successCb, obj);
+    // Add created at time stamp to object
+    obj.createdAt = Firebase.ServerValue.TIMESTAMP;
+    if(typeof listName == 'string' && typeof obj != 'undefined'){
+      this.child(listName).push(obj, function(err){
+        if(!err){
+          handleCb(successCb, obj);
+        } else {
+          handleCb(errorCb, err);
+        }
+      });
+    }
+  };
+
+    /**
+   * Deletes an object from a list given object id and list name
+   * @memberOf Fireadmin#
+   * @param {String} listName - `Required` The name of the list the object will be put into.
+   * @param {Object} id - `Required` Id of object you wish to delete
+   * @param {Function} onSuccess - `Not Required` Function that runs when your object has been created successfully and returns newly created object.
+   * @param {Function} onError - `Not Required` Function that runs if there is an error creating the object.
+   * @example
+   * //creates new message object in message list
+   * fa.deleteObject('messages', {title:Example, content:"Cool Message"}, function(newMsg){
+   *  console.log('New Message created successfuly:', newMsg);
+   * }, function(err){
+   *  console.error('Error creating new message:', err);
+   * });
+   */
+  Fireadmin.prototype.deleteObject = function(listName, id, successCb, errorCb){
+    this.child(listName).child(id).on('value', function(objSnap){
+      if(objSnap.val()){
+        objSnap.ref().remove(function(err){
+          if(!err){
+            handleCb(successCb);
+          } else {
+            handleCb(errorCb, err);
+          }
+        });
       } else {
-        handleCb(errorCb, err);
+        console.error(id + ' does not exist in ' + listName + ' so it can not be deleted.');
+        handleCb(errorCb, {message:'Object does not exist', status:400});
       }
+    }, function(err){
+        console.error('Error deleting'+ id + ' from '+ listName + ' :', err);
+        handleCb(errorCb, err);
     });
   };
   /** Modified version of Firebase's authWithPassword that handles presence
@@ -304,48 +346,8 @@
       ref = ref.child(pathRef(args));
     }
     return ref;
-  }
-
-  /** Handle Callback functions by checking for existance and returning with val if avaialble
-  * @function handleCb
-  * @param callback {Function} Callback function to handle
-  * @param value {string|object|array} Value to provide to callback function
-  * @example
-  * //Handle successCb
-  *  function(uid, successCb, errorCb){
-  *     ref.on('value', function(accountSnap){
-  *      handleCb(successCb, accountSnap.val());
-  *     }, function(err){
-  *      handleCb(errorCb, err);
-  *    });
-  *  };
-  */
-  function handleCb(cb, val){
-    if(cb && typeof cb == 'function'){
-      if(val){
-        return cb(val);
-      } else {
-        return cb();
-      }
-    }
-  }
-
-  /** Library initialization function
-   * @private
-   */
-  function init() {
-    var requiredVersion = "2.1.2"; // Minimum Firebase Library version
-    var fbVersionInt = stringifyVersion(window.Firebase.SDK_VERSION); // Firebase Version with . removed
-    var requiredVersionInt = stringifyVersion(requiredVersion); //Required version with . removed
-    if(typeof window.Firebase == 'undefined'){ //Check for Firebase library
-      throw new Error('Firebase is required to use FireAdmin');
-    } else if (fbVersionInt < requiredVersionInt){ //Check Firebase library version
-      console.warn('Unsupported Firebase version: ' + window.Firebase.SDK_VERSION +'. Please upgrade to 2.1.2 or newer.');
-    }
   };
-  //Remove periods from version number
-  function stringifyVersion(version){
-    return version.replace(".", "").replace(".", "");
-  }
 
-})(window, document);
+  Fireadmin.prototype.sendPushNotificaiton = function(){
+
+  };

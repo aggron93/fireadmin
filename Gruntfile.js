@@ -110,10 +110,28 @@ module.exports = function(grunt) {
             gitDescribeOptions: '--tags --always --abbrev=1 --dirty=-d',
             globalReplace: false
           }
+        },
+        'closure-compiler': {
+          frontend: {
+            closurePath: '<%= env.CLOSURE_PATH %>'||'node_modules/closure/closure.js',
+            js: '<%= config.devFolder %>/**/*.js',
+            jsOutputFile: '<%= config.distFolder %>/fireadmin.min.js',
+            maxBuffer: 500,
+            options: {
+              compilation_level: 'ADVANCED_OPTIMIZATIONS',
+              language_in: 'ECMASCRIPT5_STRICT'
+            }
+          }
         }
 
     });
-
+    // function getClosurePath(){
+    //   if(process.env && process.env.hasOwnProperty('CLOSURE_PATH')){
+    //     return '<%= process.env.CLOSURE_PATH %>';
+    //   } else {
+    //     return 'node_modules/closure/closure.js';
+    //   }
+    // }
     // Default task(s).
     grunt.registerTask('default', [ 'connect:dev', 'watch']);
     //Documentation, minify js, minify html
