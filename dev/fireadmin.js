@@ -1,10 +1,7 @@
 
 
 
-  goog.require("fa.init");
-  goog.require("fa.utils");
   //Initialize Library
-  fa.init();
   /**
    * Creates a Fireadmin object
    * @namespace Fireadmin
@@ -17,9 +14,9 @@
     if(typeof url == "undefined" || typeof url != "string"){
       throw new Error('Url is required to use FireAdmin');
     }
-    var self = new Firebase(url);
-    self.fbUrl = url;
-    return self;
+    this.ref = new Firebase(url);
+    this.fbUrl = url;
+    return this;
   };
   /**
   * This callback is displayed as part of the Requester class.
@@ -45,7 +42,7 @@
    * });
    */
   Fireadmin.prototype.createObject = function(listName, obj, successCb, errorCb){
-    var auth = this.getAuth();
+    var auth = this.ref.getAuth();
     // If user is logged in they are added as the author
     if(auth) {
       obj.author = auth.uid;
@@ -53,7 +50,7 @@
     // Add created at time stamp to object
     obj.createdAt = Firebase.ServerValue.TIMESTAMP;
     if(typeof listName == 'string' && typeof obj != 'undefined'){
-      this.child(listName).push(obj, function(err){
+      this.ref.child(listName).push(obj, function(err){
         if(!err){
           handleCb(successCb, obj);
         } else {
@@ -79,7 +76,7 @@
    * });
    */
   Fireadmin.prototype.deleteObject = function(listName, id, successCb, errorCb){
-    this.child(listName).child(id).on('value', function(objSnap){
+    this.ref.child(listName).child(id).on('value', function(objSnap){
       if(objSnap.val()){
         objSnap.ref().remove(function(err){
           if(!err){
@@ -111,7 +108,7 @@
    * });
    */
   Fireadmin.prototype.emailAuth = function(loginData, successCb, errorCb){
-    var self = this;
+    var self = this.ref;
     self.authWithPassword(loginData, function(error, authData) {
       if (error === null) {
         // user authenticated with Firebase
@@ -141,9 +138,9 @@
   * });
   */
   Fireadmin.prototype.listByCurrentUser = function(listName, successCb, errorCb) {
-    var auth = this.getAuth();
+    var auth = this.ref.getAuth();
     if(auth != null) {
-      this.child(listName).orderByChild('author').equalTo(auth.uid).on('value', function(listSnap){
+      this.ref.child(listName).orderByChild('author').equalTo(auth.uid).on('value', function(listSnap){
         handleCb(successCb, listSnap.val());
       }, function(err){
         handleCb(errorCb, err);
@@ -212,7 +209,7 @@
   * });
   */
   Fireadmin.prototype.userCount = function(successCb, errorCb){
-    this.child('users').on('value', function(usersListSnap){
+    this.ref.child('users').on('value', function(usersListSnap){
       handleCb(successCb, usersListSnap.numChildren());
     }, function(err){
       handleCb(errorCb, err);
@@ -229,7 +226,7 @@
   *
   */
   Fireadmin.prototype.onlineUserCount = function(successCb, errorCb){
-    this.child('presence').on("value", function(onlineUserSnap){
+    this.ref.child('presence').on("value", function(onlineUserSnap){
       console.log('There are currently' + count + ' users online.');
       handleCb(successCb, onlineUserSnap.numChildren());
     }, function(err){
@@ -251,7 +248,7 @@
   *
   */
   Fireadmin.prototype.accountByUid = function(uid, successCb, errorCb){
-    this.child(uid).on('value', function(accountSnap){
+    this.ref.child(uid).on('value', function(accountSnap){
       handleCb(successCb, accountSnap.val());
     }, function(err){
       console.error('Error getting account for ' + uid + ' : ', err);
@@ -273,7 +270,7 @@
    */
   Fireadmin.prototype.accountByEmail = function(email, successCb, errorCb){
     if(email && typeof email == "string"){
-      this.child('users').orderByChild('email').equalTo(email).on("value", function(querySnapshot) {
+      this.ref.child('users').orderByChild('email').equalTo(email).on("value", function(querySnapshot) {
         console.log('accountByEmail returned:', querySnapshot.val());
         handleCb(successCb, querySnapshot.val());
       }, function(err){
@@ -292,7 +289,7 @@
   */
   Fireadmin.prototype.setupPresence = function(uid){
     console.log('setupPresence called for uid:', uid);
-    var self = this;
+    var self = this.ref;
     var amOnline = self.child('.info/connected');
     var onlineRef = self.child('presence').child(uid);
     var sessionsRef = self.child('sessions');
@@ -351,3 +348,61 @@
   Fireadmin.prototype.sendPushNotificaiton = function(){
 
   };
+  goog.provide("fa.utils");
+  //Remove periods from version number
+  fa.utils.stringifyVersion = function(version){
+    return version.replace(".", "").replace(".", "");
+  }
+    /** Handle Callback functions by checking for existance and returning with val if avaialble
+  * @function handleCb
+  * @param callback {Function} Callback function to handle
+  * @param value {string|object|array} Value to provide to callback function
+  * @example
+  * //Handle successCb
+  *  function(uid, successCb, errorCb){
+  *     ref.on('value', function(accountSnap){
+  *      handleCb(successCb, accountSnap.val());
+  *     }, function(err){
+  *      handleCb(errorCb, err);
+  *    });
+  *  };
+  */
+  fa.utils.handleCb = function (cb, val){
+    if(cb && typeof cb == 'function'){
+      if(val){
+        return cb(val);
+      } else {
+        return cb();
+      }
+    }
+  };
+
+  fa.utils.areValid = function() {
+    //Create an array from arguments
+    var args = Array.prototype.slice.call(arguments, 0);
+    for(i=0; i < args.length; i++){
+      if(typeof args[i] == 'undefined'){
+        return false
+      }
+      if(typeof args[i] == ''){
+
+      } else {
+        console.error('[validateParams] Invalid argument:', args[i]);
+        throw new Error('Invalid argument in validateParams function.');
+      }
+    }
+  };
+  goog.provide('fa.init');
+  fa.init = function(){
+    var requiredVersion = "2.1.2"; // Minimum Firebase Library version
+    var fbVersionInt = fa.utils.stringifyVersion(window.Firebase.SDK_VERSION); // Firebase Version with . removed
+    var requiredVersionInt = fa.utils.stringifyVersion(requiredVersion); //Required version with . removed
+    if(typeof window.Firebase == 'undefined'){ //Check for Firebase library
+      throw new Error('Firebase is required to use FireAdmin');
+    } else if (fbVersionInt < requiredVersionInt){ //Check Firebase library version
+      console.warn('Unsupported Firebase version: ' + window.Firebase.SDK_VERSION +'. Please upgrade to 2.1.2 or newer.');
+    }
+  };
+  fa.init();
+
+  
